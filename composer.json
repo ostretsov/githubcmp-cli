@@ -1,0 +1,25 @@
+{
+  "name": "ostretsov/githubcmp-cli",
+  "description": "A simple github.com repositories comparator",
+  "keywords": [
+    "github"
+  ],
+  "homepage": "https://github.com/ruFog/githubcmp",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Artem Ostretsov",
+      "email": "artem@ostretsov.ru"
+    }
+  ],
+  "require": {
+    "php": ">=5.5.0",
+    "ostretsov/githubcmp": "dev-master",
+    "symfony/console": "~3.0.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "GithubcmpCli\\": "GithubcmpCli"
+    }
+  }
+}
