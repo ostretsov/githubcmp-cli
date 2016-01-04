@@ -8,6 +8,7 @@
 namespace GithubcmpCli\Command;
 
 use Doctrine\Common\Annotations\AnnotationReader;
+use Github\Exception\RuntimeException;
 use Githubcmp\Annotation\Weight;
 use Githubcmp\Comparator;
 use Githubcmp\Model\Repository;
@@ -66,8 +67,17 @@ class GithubcmpCommand extends Command
 
                 continue;
             }
+
             list($username, $repository) = $urlParts;
-            $this->repositories[] = $repositoryBuilder->build($username, $repository)->getResult();
+            try {
+                $this->repositories[] = $repositoryBuilder->build($username, $repository)->getResult();
+            } catch (RuntimeException $e) {
+                $notFound = $formatterHelper->formatBlock(sprintf('"%s" is not found!', $url), 'error');
+                $output->writeln($notFound);
+
+                continue;
+            }
+
             ++$i;
         } while (count($this->repositories) < 2 || $questionHelper->ask($input, $output, $continueQuestion));
 
@@ -106,7 +116,7 @@ class GithubcmpCommand extends Command
         }
 
         // finalize output
-//        $output->writeln('');
-//        $output->writeln(sprintf('Remaining request that hour: %d', ))
+        $output->writeln('');
+        $output->writeln(sprintf('The number of requests remaining in the current rate limit window: %s.', $repositoryBuilder->getClient()->getHttpClient()->getLastResponse()->getHeader('X-RateLimit-Remaining')->__toString()));
     }
 }
