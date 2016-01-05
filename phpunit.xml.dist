@@ -11,8 +11,8 @@
          syntaxCheck="false"
          bootstrap="./Githubcmp/bootstrap.php">
     <testsuites>
-        <testsuite name="Githubcmp Test Suite">
-            <directory>./Githubcmp/Tests</directory>
+        <testsuite name="GithubcmpCli Test Suite">
+            <directory>./GithubcmpCli/Tests</directory>
         </testsuite>
     </testsuites>
 </phpunit>

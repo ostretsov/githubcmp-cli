@@ -1,13 +1,10 @@
 #!/usr/bin/env php
 <?php
 
-require_once __DIR__.'/vendor/autoload.php';
+require_once __DIR__.'/GithubcmpCli/bootstrap.php';
 
-use Doctrine\Common\Annotations\AnnotationRegistry;
 use GithubcmpCli\Command\CmpCommand;
 use Symfony\Component\Console\Application;
-
-AnnotationRegistry::registerAutoloadNamespace('Githubcmp', __DIR__.'/vendor/ostretsov/githubcmp');
 
 $application = new Application();
 $application->add(new CmpCommand());

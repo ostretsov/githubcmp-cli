@@ -24,6 +24,8 @@ use Symfony\Component\PropertyAccess\PropertyAccess;
 
 class CmpCommand extends Command
 {
+    private $weightOptions = [];
+
     /**
      * @var Repository[]
      */
@@ -36,11 +38,26 @@ class CmpCommand extends Command
             ->setDescription('Compare github repositories')
             ->addOption(
                 'token',
-                null,
+                't',
                 InputOption::VALUE_OPTIONAL,
                 'Github API token to use'
             )
         ;
+
+        // weight configurations
+        $reflectedClass = new \ReflectionClass(Repository::class);
+        $reader = new AnnotationReader();
+        foreach ($reflectedClass->getProperties() as $property) {
+            foreach ($reader->getPropertyAnnotations($property) as $annotation) {
+                if ($annotation instanceof Weight) {
+                    $this->weightOptions[] = $property->getName();
+                }
+            }
+        }
+
+        foreach ($this->getUniqueOptions($this->weightOptions) as $name => $shortcut) {
+            $this->addOption($name, $shortcut, InputOption::VALUE_OPTIONAL);
+        }
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -82,8 +99,14 @@ class CmpCommand extends Command
             ++$i;
         } while (count($this->repositories) < 2 || $questionHelper->ask($input, $output, $continueQuestion));
 
+        $options = [];
+        foreach ($this->weightOptions as $weightOption) {
+            if ($input->hasOption($weightOption)) {
+                $options[strtolower(preg_replace('/([^A-Z])([A-Z])/', '$1_$2', $weightOption))] = $input->getOption($weightOption);
+            }
+        }
         $comparator = new Comparator();
-        $sortedRepositories = $comparator->compare($this->repositories);
+        $sortedRepositories = $comparator->compare($this->repositories, $options);
 
         // output results
         $i = 1;
@@ -101,11 +124,13 @@ class CmpCommand extends Command
             foreach ($reflectedClass->getProperties() as $property) {
                 foreach ($reader->getPropertyAnnotations($property) as $annotation) {
                     if ($annotation instanceof Weight) {
+                        // TODO Move to Comparator (get* function)
+                        $weight = isset($options[$property->name]) && $options[$property->name] > 0 ? $options[$property->name] : $annotation->value;
                         $rows[] = [
                             ucfirst(strtolower(preg_replace('/([^A-Z])([A-Z])/', '$1 $2', $property->name))),
                             $propertyAccessor->getValue($repository, $property->name),
-                            $annotation->value,
-                            $propertyAccessor->getValue($repository, $property->name) * $annotation->value,
+                            $weight,
+                            $propertyAccessor->getValue($repository, $property->name) * $weight,
                         ];
                     }
                 }
@@ -130,5 +155,24 @@ class CmpCommand extends Command
         // finalize output
         $output->writeln('');
         $output->writeln(sprintf('The number of requests remaining in the current rate limit window: %s.', $repositoryBuilder->getClient()->getHttpClient()->getLastResponse()->getHeader('X-RateLimit-Remaining')->__toString()));
+    }
+
+    public function getUniqueOptions(array $fullNamedOptions)
+    {
+        $shortcuts = [];
+        foreach ($fullNamedOptions as $fullNamedOption) {
+            $size = 1;
+            do {
+                $shortcut = substr($fullNamedOption, 0, $size);
+                if ($size > strlen($fullNamedOption)) {
+                    $shortcut .= 'x';
+                }
+                ++$size;
+            } while (in_array($shortcut, $shortcuts));
+
+            $shortcuts[] = $shortcut;
+        }
+
+        return array_combine($fullNamedOptions, $shortcuts);
     }
 }
