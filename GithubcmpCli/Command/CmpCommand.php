@@ -22,7 +22,7 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\PropertyAccess\PropertyAccess;
 
-class GithubcmpCommand extends Command
+class CmpCommand extends Command
 {
     /**
      * @var Repository[]
@@ -32,8 +32,8 @@ class GithubcmpCommand extends Command
     protected function configure()
     {
         $this
-            ->setName('ostretsov:githubcmp')
-            ->setDescription('Compare github.com repositories')
+            ->setName('cmp')
+            ->setDescription('Compare github repositories')
             ->addOption(
                 'token',
                 null,
@@ -58,11 +58,11 @@ class GithubcmpCommand extends Command
         $repositoryBuilder = new GithubRepositoryBuilder($token);
         $i = 1;
         do {
-            $urlQuestion = new Question($i.'. Please enter the URL of repository on github.com: ');
+            $urlQuestion = new Question($i.'. Please enter the name (username/repository) of repository on github.com: ');
             $url = $questionHelper->ask($input, $output, $urlQuestion);
             $urlParts = explode('/', $url);
             if (count($urlParts) != 2) {
-                $invalidUrl = $formatterHelper->formatBlock(sprintf('"%s" is invalid URL! Enter something like "ostretsov/githubcmp" (without quotes).', $url), 'error');
+                $invalidUrl = $formatterHelper->formatBlock(sprintf('"%s" is invalid repository name! Enter something like "ostretsov/githubcmp" (without quotes).', $url), 'error');
                 $output->writeln($invalidUrl);
 
                 continue;
@@ -70,6 +70,7 @@ class GithubcmpCommand extends Command
 
             list($username, $repository) = $urlParts;
             try {
+                $output->writeln('Getting repository information...');
                 $this->repositories[] = $repositoryBuilder->build($username, $repository)->getResult();
             } catch (RuntimeException $e) {
                 $notFound = $formatterHelper->formatBlock(sprintf('"%s" is not found!', $url), 'error');
@@ -111,6 +112,7 @@ class GithubcmpCommand extends Command
                 ->setRows($rows)
             ;
             $resultTable->render();
+            $output->writeln(sprintf('Absolute rating: %01.2f', $repository->getWeight()));
 
             ++$i;
         }
