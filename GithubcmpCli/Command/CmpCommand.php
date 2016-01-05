@@ -101,14 +101,24 @@ class CmpCommand extends Command
             foreach ($reflectedClass->getProperties() as $property) {
                 foreach ($reader->getPropertyAnnotations($property) as $annotation) {
                     if ($annotation instanceof Weight) {
-                        $rows[] = [$property->name, $propertyAccessor->getValue($repository, $property->name), $annotation->value];
+                        $rows[] = [
+                            ucfirst(strtolower(preg_replace('/([^A-Z])([A-Z])/', '$1 $2', $property->name))),
+                            $propertyAccessor->getValue($repository, $property->name),
+                            $annotation->value,
+                            $propertyAccessor->getValue($repository, $property->name) * $annotation->value,
+                        ];
                     }
                 }
             }
 
+            usort($rows, function ($a, $b) {
+                return $b[3] - $a[3];
+            });
+            $rows[] = ['Total', '', '', $repository->getWeight()];
+
             $resultTable = new Table($output);
             $resultTable
-                ->setHeaders(['Key', 'Value', 'Factor'])
+                ->setHeaders(['Key', 'Value', 'Weight', 'Rating'])
                 ->setRows($rows)
             ;
             $resultTable->render();
