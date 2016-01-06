@@ -26,7 +26,7 @@ class CliRenderer extends AbstractRenderer
         $this->output = $output;
     }
 
-    public function render(array $repositories)
+    public function render(array $repositories, array $options)
     {
         // output results
         $i = 1;
@@ -59,7 +59,7 @@ class CliRenderer extends AbstractRenderer
             usort($rows, function ($a, $b) {
                 return $b[3] - $a[3];
             });
-            $rows[] = ['Total', '', '', $repository->getWeight()];
+            $rows[] = ['Total', '', '', sprintf('%01.2f', $repository->getWeight())];
 
             $resultTable = new Table($this->output);
             $resultTable

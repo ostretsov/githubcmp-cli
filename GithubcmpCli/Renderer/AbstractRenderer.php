@@ -9,5 +9,5 @@ namespace GithubcmpCli\Renderer;
 
 abstract class AbstractRenderer
 {
-    abstract public function render(array $repositories);
+    abstract public function render(array $repositories, array $options);
 }
