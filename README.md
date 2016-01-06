@@ -142,8 +142,6 @@ The number of requests remaining in the current rate limit window: 4806.
 ```
 
 ## TODO
-* make factor values configurable;
-* add sign
 * output as html
 * publish on github's gist (if token supports it)
 * add docker support;

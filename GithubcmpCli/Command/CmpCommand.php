@@ -14,22 +14,15 @@ use Githubcmp\Comparator;
 use Githubcmp\Model\Repository;
 use Githubcmp\RepositoryBuilder\GithubRepositoryBuilder;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
-use Symfony\Component\PropertyAccess\PropertyAccess;
 
 class CmpCommand extends Command
 {
     private $weightOptions = [];
-
-    /**
-     * @var Repository[]
-     */
-    private $repositories;
 
     protected function configure()
     {
@@ -41,6 +34,13 @@ class CmpCommand extends Command
                 't',
                 InputOption::VALUE_OPTIONAL,
                 'Github API token to use'
+            )
+            ->addOption(
+                'type',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Supported outputs: cli (default), html, gist (token with "gist" scope is needed)',
+                'cli'
             )
         ;
 
@@ -62,6 +62,22 @@ class CmpCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $repositories = $this->getRepositories($input, $output);
+
+        $this->compareRepositories($repositories);
+
+        // remaining rate limit
+        $output->writeln(sprintf('The number of requests remaining in the current rate limit window: %s.', $repositoryBuilder->getClient()->getHttpClient()->getLastResponse()->getHeader('X-RateLimit-Remaining')->__toString()));
+    }
+
+    /**
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     *
+     * @return Repository[]
+     */
+    protected function getRepositories(InputInterface $input, OutputInterface $output)
+    {
         $formatterHelper = $this->getHelper('formatter');
         $questionHelper = $this->getHelper('question');
 
@@ -71,6 +87,7 @@ class CmpCommand extends Command
             $output->writeln($tokenIsNotDefined);
         }
 
+        $repositories = [];
         $continueQuestion = new ConfirmationQuestion('Add one more repository to compare? [y/n] ', false);
         $repositoryBuilder = new GithubRepositoryBuilder($token);
         $i = 1;
@@ -88,7 +105,7 @@ class CmpCommand extends Command
             list($username, $repository) = $urlParts;
             try {
                 $output->writeln('Getting repository information...');
-                $this->repositories[] = $repositoryBuilder->build($username, $repository)->getResult();
+                $repositories[] = $repositoryBuilder->build($username, $repository)->getResult();
             } catch (RuntimeException $e) {
                 $notFound = $formatterHelper->formatBlock(sprintf('"%s" is not found!', $url), 'error');
                 $output->writeln($notFound);
@@ -97,7 +114,19 @@ class CmpCommand extends Command
             }
 
             ++$i;
-        } while (count($this->repositories) < 2 || $questionHelper->ask($input, $output, $continueQuestion));
+        } while (count($repositories) < 2 || $questionHelper->ask($input, $output, $continueQuestion));
+
+        return $repositories;
+    }
+
+    /**
+     * @param Repository[] $repositories
+     *
+     * @return Repository[]
+     */
+    protected function compareRepositories(array $repositories)
+    {
+        $comparator = new Comparator();
 
         $options = [];
         foreach ($this->weightOptions as $weightOption) {
@@ -105,56 +134,8 @@ class CmpCommand extends Command
                 $options[strtolower(preg_replace('/([^A-Z])([A-Z])/', '$1_$2', $weightOption))] = $input->getOption($weightOption);
             }
         }
-        $comparator = new Comparator();
-        $sortedRepositories = $comparator->compare($this->repositories, $options);
 
-        // output results
-        $i = 1;
-        $reflectedClass = new \ReflectionClass(Repository::class);
-        $reader = new AnnotationReader();
-        $propertyAccessor = PropertyAccess::createPropertyAccessor();
-        foreach ($sortedRepositories as $repository) {
-            /* @var Repository $repository */
-            $output->writeln('');
-            $output->writeln(sprintf('%d. %s with %d%%', $i, $repository->username.'/'.$repository->repository, $repository->getRating()));
-            $output->writeln('');
-
-            // prepare rows for table rendering
-            $rows = [];
-            foreach ($reflectedClass->getProperties() as $property) {
-                foreach ($reader->getPropertyAnnotations($property) as $annotation) {
-                    if ($annotation instanceof Weight) {
-                        // TODO Move to Comparator (get* function)
-                        $weight = isset($options[$property->name]) && $options[$property->name] > 0 ? $options[$property->name] : $annotation->value;
-                        $rows[] = [
-                            ucfirst(strtolower(preg_replace('/([^A-Z])([A-Z])/', '$1 $2', $property->name))),
-                            $propertyAccessor->getValue($repository, $property->name),
-                            $weight,
-                            $propertyAccessor->getValue($repository, $property->name) * $weight,
-                        ];
-                    }
-                }
-            }
-
-            usort($rows, function ($a, $b) {
-                return $b[3] - $a[3];
-            });
-            $rows[] = ['Total', '', '', $repository->getWeight()];
-
-            $resultTable = new Table($output);
-            $resultTable
-                ->setHeaders(['Key', 'Value', 'Weight', 'Rating'])
-                ->setRows($rows)
-            ;
-            $resultTable->render();
-            $output->writeln(sprintf('Absolute rating: %01.2f', $repository->getWeight()));
-
-            ++$i;
-        }
-
-        // finalize output
-        $output->writeln('');
-        $output->writeln(sprintf('The number of requests remaining in the current rate limit window: %s.', $repositoryBuilder->getClient()->getHttpClient()->getLastResponse()->getHeader('X-RateLimit-Remaining')->__toString()));
+        return $comparator->compare($repositories, $options);
     }
 
     public function getUniqueOptions(array $fullNamedOptions)
