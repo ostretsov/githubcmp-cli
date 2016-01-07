@@ -15,6 +15,7 @@ use Githubcmp\Model\Repository;
 use Githubcmp\RepositoryBuilder\GithubRepositoryBuilder;
 use GithubcmpCli\Exception\NotImplementedException;
 use GithubcmpCli\Renderer\CliRenderer;
+use GithubcmpCli\Renderer\GistRenderer;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -28,7 +29,7 @@ class CmpCommand extends Command
     const OUTPUT_TYPE_HTML = 'html';
     const OUTPUT_TYPE_GIST = 'gist';
 
-    private $token = null;
+    private $apiToken = null;
 
     private $supportedOutputTypes = [];
 
@@ -93,6 +94,8 @@ class CmpCommand extends Command
                 $renderer = new CliRenderer($output);
                 break;
             case self::OUTPUT_TYPE_GIST:
+                $renderer = new GistRenderer($output, $this->apiToken);
+                break;
             case self::OUTPUT_TYPE_HTML:
                 throw new NotImplementedException(sprintf('"%s" output format is not yet implemented!'));
         }
@@ -124,8 +127,8 @@ class CmpCommand extends Command
             exit(2);
         }
 
-        $this->token = $input->getOption('token');
-        if (!$this->token) {
+        $this->apiToken = $input->getOption('token');
+        if (!$this->apiToken) {
             if ($this->outputType == self::OUTPUT_TYPE_GIST) {
                 $tokenMustBeDefined = $this->getHelper('formatter')->formatBlock('Token with gist scope must be defined to publish on gist.github.com!', 'error');
                 $output->writeln($tokenMustBeDefined);
@@ -158,7 +161,7 @@ class CmpCommand extends Command
 
         $repositories = [];
         $continueQuestion = new ConfirmationQuestion('Add one more repository to compare? [y/n] ', false);
-        $repositoryBuilder = new GithubRepositoryBuilder($this->token);
+        $repositoryBuilder = new GithubRepositoryBuilder($this->apiToken);
         $i = 1;
         do {
             $urlQuestion = new Question($i.'. Please enter the name (username/repository) of repository on github.com: ');

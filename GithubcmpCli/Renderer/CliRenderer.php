@@ -19,7 +19,7 @@ class CliRenderer extends AbstractRenderer
     /**
      * @var OutputInterface
      */
-    private $output;
+    protected $output;
 
     public function __construct(OutputInterface $output)
     {
@@ -33,6 +33,7 @@ class CliRenderer extends AbstractRenderer
         $reflectedClass = new \ReflectionClass(Repository::class);
         $reader = new AnnotationReader();
         $propertyAccessor = PropertyAccess::createPropertyAccessor();
+        $this->output->writeln(sprintf('Generation time: %s', date('m-d-Y H:i')));
         foreach ($repositories as $repository) {
             /* @var Repository $repository */
             $this->output->writeln('');
