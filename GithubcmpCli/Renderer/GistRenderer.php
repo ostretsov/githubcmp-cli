@@ -10,6 +10,7 @@ namespace GithubcmpCli\Renderer;
 use Github\Client;
 use Githubcmp\Model\Repository;
 use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class GistRenderer extends CliRenderer
@@ -20,14 +21,14 @@ class GistRenderer extends CliRenderer
     private $apiToken;
 
     /**
-     * @var OutputInterface
+     * @var ConsoleOutput
      */
-    protected $output;
+    protected $consoleOutput;
 
     /**
      * @var BufferedOutput
      */
-    protected $bufferedOutput;
+    protected $output;
 
     public function __construct(OutputInterface $output, $apiToken)
     {
@@ -36,10 +37,10 @@ class GistRenderer extends CliRenderer
         }
 
         $this->apiToken = $apiToken;
-        $this->output = $output;
-        $this->bufferedOutput = new BufferedOutput();
+        $this->consoleOutput = $output;
 
-        parent::__construct($this->bufferedOutput);
+        $bufferedOutput = new BufferedOutput();
+        parent::__construct($bufferedOutput);
     }
 
     /**
@@ -49,10 +50,10 @@ class GistRenderer extends CliRenderer
     public function render(array $repositories, array $options)
     {
         parent::render($repositories, $options);
-        $content = $this->bufferedOutput->fetch();
-        $this->output->writeln($content);
+        $content = $this->output->fetch();
+        $this->consoleOutput->writeln($content);
 
-        $this->output->writeln('Publishing on gist.github.com...');
+        $this->consoleOutput->writeln('Publishing on gist.github.com...');
         $client = new Client();
         $client->authenticate($this->apiToken, null, Client::AUTH_HTTP_TOKEN);
         $response = $client->api('gists')->create([
@@ -65,7 +66,7 @@ class GistRenderer extends CliRenderer
             ],
         ]);
 
-        $this->output->writeln('Gist URL: %s', $response['url']);
+        $this->consoleOutput->writeln(sprintf('Gist URL: %s', $response['html_url']));
     }
 
     private function getFilename(array $repositories)
