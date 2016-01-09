@@ -13,9 +13,3 @@ $ ./github cmp --token=your_github_token --type=gist
 ```
 
 By specifying `gist` type results will be published on [gist.github.com](https://gist.github.com/). Your token then must be with the gist scope!
-
-
-## TODO
-* add docker support;
-* travis;
-* README.md.
